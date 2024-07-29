@@ -85,8 +85,8 @@ class make_env_mw(gym.Env):
             goal = 0.0
             for i in range(self.max_t): # CHANGE?
                 actions = agent.sample_actions(observations, temperature=temperature)
-                next_observations, rewards, terms, truns, goals = self.step(actions)
-                goal += goals / self.max_t
+                next_observations, rewards, terms, truns, goals_ = self.step(actions)
+                goal += goals_ / self.max_t
                 returns += rewards
                 observations = next_observations            
             goal[goal > 0] = 1.0

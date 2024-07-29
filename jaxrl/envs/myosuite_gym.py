@@ -94,27 +94,21 @@ class make_env_myo(gym.Env):
         return obs, rews, terms, truns, goals, actions
     
     def evaluate(self, agent, num_episodes=5, temperature=0.0):
-        returns_mean = np.zeros(self.num_envs)
-        returns = np.zeros(self.num_envs)
-        goals_mean = np.zeros(self.num_envs)
-        goals = np.zeros(self.num_envs)
-        episode_count = np.zeros(self.num_envs)
-        state = self.reset()
-        while episode_count.min() < num_episodes:
-            actions = agent.sample_actions(state, temperature=temperature)
-            #actions = self.action_space.sample()
-            new_state, reward, term, trun, goal = self.step(actions)
-            goals += goal
-            goals[goals > 0.0] = 1.0
-            returns += reward
-            state = new_state
-            state, term, trun, reset_mask = self.reset_where_done(state, term, trun)
-            episode_count += reset_mask
-            returns_mean += reset_mask * returns
-            returns *= (1 - reset_mask)
-            goals_mean += reset_mask * goals
-            goals *= (1 - reset_mask)
-        return {"return": returns_mean/episode_count, "goals_mean": goals_mean/episode_count}
+        n_seeds = self.num_seeds
+        goals = []
+        returns_eval = []
+        for _episode in range(num_episodes):
+            observations = self.reset()
+            returns = np.zeros(n_seeds)
+            goal = 0.0
+            for i in range(self.max_t): # CHANGE?
+                actions = agent.sample_actions(observations, temperature=temperature)
+                next_observations, rewards, terms, truns, goals_ = self.step(actions)
+                goal += goals_ / self.max_t
+                returns += rewards
+                observations = next_observations            
+            goal[goal > 0] = 1.0
+            goals.append(goal)
+            returns_eval.append(returns)
+        return {'goal': np.array(goals).mean(axis=0), 'return': np.array(returns_eval).mean(axis=0)}
     
-#env = make_env_myo()
-#env.evaluate(None, 10, 0.0)
