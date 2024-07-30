@@ -33,7 +33,6 @@ class make_env_myo(gym.Env):
                                             high=self.envs[0].observation_space.high[None].repeat(len(self.envs), axis=0),
                                             shape=(len(self.envs), self.envs[0].observation_space.shape[0]),
                                             dtype=self.envs[0].observation_space.dtype)
-        self.action_wrapper_multiplier = self.envs[0].action_space.high[0]
         self.action_dim = self.envs[0].action_space.shape[0]
         
     def _reset_idx(self, idx):
@@ -71,8 +70,7 @@ class make_env_myo(gym.Env):
     def step(self, actions):
         obs, rews, terms, truns, goals = [], [], [], [], []
         self.timesteps += 1
-        actions_ = actions * self.action_wrapper_multiplier
-        for timestep, env, action in zip(self.timesteps, self.envs, actions_):
+        for timestep, env, action in zip(self.timesteps, self.envs, actions):
             ob, reward, _, info = env.step(action)
             term = False
             obs.append(ob)
