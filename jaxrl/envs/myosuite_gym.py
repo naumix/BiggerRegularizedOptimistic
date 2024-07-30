@@ -24,6 +24,7 @@ class make_env_myo(gym.Env):
         self.max_t = max_t
         self.envs = [gym.make(MYOSUITE_TASKS[env_name]) for seed in seeds]
         self.num_envs = len(self.envs)
+        self.num_seeds = num_envs
         self.timesteps = np.zeros(self.num_envs)
         self.action_space = spaces.Box(low=self.envs[0].action_space.low[None].repeat(len(self.envs), axis=0),
                                        high=self.envs[0].action_space.high[None].repeat(len(self.envs), axis=0),
