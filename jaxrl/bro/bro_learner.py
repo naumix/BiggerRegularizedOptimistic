@@ -150,7 +150,7 @@ class BRO(object):
         distributional: bool = True,
         n_quantiles: int = 100,
         kl_target: float = 0.05,
-        std_multiplier: float = 0.5,
+        std_multiplier: float = 0.75,
     ) -> None:
         
         self.distributional = distributional
