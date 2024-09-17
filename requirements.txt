@@ -3,7 +3,7 @@ scipy==1.12.0
 jax[cuda12_pip]==0.4.19 
 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 flax==0.7.5
-dm_control==1.0.16
+dm_control==1.0.22
 imageio
 tfp-nightly==0.20.0.dev20230524
 wandb
