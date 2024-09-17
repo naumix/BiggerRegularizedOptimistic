@@ -1,91 +1,179 @@
-import gym
+#adapted from https://github.com/imgeorgiev/dmc2gymnasium
+
+import logging
 import numpy as np
-from jaxrl.envs.single_precision import SinglePrecision
-import copy
-from typing import Dict, Optional, OrderedDict, Tuple
+
 from dm_control import suite
 from dm_env import specs
-from gym import core, spaces
+from gymnasium.core import Env
+from gymnasium.spaces import Box
+from gymnasium import spaces
+from gymnasium.wrappers import FlattenObservation, RescaleAction
 
-TimeStep = Tuple[np.ndarray, float, bool, dict]
 
-def dmc_spec2gym_space(spec):
-    if isinstance(spec, OrderedDict):
-        spec = copy.copy(spec)
-        for k, v in spec.items():
-            spec[k] = dmc_spec2gym_space(v)
-        return spaces.Dict(spec)
-    elif isinstance(spec, specs.BoundedArray):
-        return spaces.Box(low=spec.minimum, high=spec.maximum, shape=spec.shape, dtype=spec.dtype)
-    elif isinstance(spec, specs.Array):
-        return spaces.Box(low=-float('inf'), high=float('inf'), shape=spec.shape, dtype=spec.dtype)
-    else:
-        raise NotImplementedError
+def _spec_to_box(spec, dtype=np.float32):
+    def extract_min_max(s):
+        assert s.dtype == np.float64 or s.dtype == np.float32
+        dim = int(np.prod(s.shape))
+        if type(s) == specs.Array:
+            bound = np.inf * np.ones(dim, dtype=np.float32)
+            return -bound, bound
+        elif type(s) == specs.BoundedArray:
+            zeros = np.zeros(dim, dtype=np.float32)
+            return s.minimum + zeros, s.maximum + zeros
+        else:
+            logging.error("Unrecognized type")
+    mins, maxs = [], []
+    for s in spec:
+        mn, mx = extract_min_max(s)
+        mins.append(mn)
+        maxs.append(mx)
+    low = np.concatenate(mins, axis=0).astype(dtype)
+    high = np.concatenate(maxs, axis=0).astype(dtype)
+    assert low.shape == high.shape
+    return Box(low, high, dtype=dtype)
 
-class dmc2gym(core.Env):
-    def __init__(self, domain_name: str, task_name: str, task_kwargs: Optional[Dict] = {}, environment_kwargs=None):
-        assert 'random' in task_kwargs, 'please specify a seed, for deterministic behaviour'
-        self._env = suite.load(domain_name=domain_name, task_name=task_name, task_kwargs=task_kwargs, environment_kwargs=environment_kwargs)
-        self.action_space = dmc_spec2gym_space(self._env.action_spec())
-        self.observation_space = dmc_spec2gym_space(self._env.observation_spec())
-        self.seed(seed=task_kwargs['random'])
+
+def _flatten_obs(obs, dtype=np.float32):
+    obs_pieces = []
+    for v in obs.values():
+        flat = np.array([v]) if np.isscalar(v) else v.ravel()
+        obs_pieces.append(flat)
+    return np.concatenate(obs_pieces, axis=0).astype(dtype)
+
+
+class DMCGym(Env):
+    def __init__(
+        self,
+        env_name,
+        task_kwargs={},
+        environment_kwargs={},
+        #rendering="egl",
+        render_height=64,
+        render_width=64,
+        render_camera_id=0,
+        action_repeat=1
+    ):
+        domain = env_name.split('-')[0]
+        task = env_name.split('-')[1]
+        self._env = suite.load(
+            domain,
+            task,
+            task_kwargs,
+            environment_kwargs,
+        )
+
+        # placeholder to allow built in gymnasium rendering
+        self.render_mode = "rgb_array"
+        self.render_height = render_height
+        self.render_width = render_width
+        self.render_camera_id = render_camera_id
+        
+        self._true_action_space = _spec_to_box([self._env.action_spec()], np.float32)
+        self._norm_action_space = spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=self._true_action_space.shape,
+            dtype=np.float32
+        )
+
+        self._observation_space = _spec_to_box(self._env.observation_spec().values())
+        self._action_space = _spec_to_box([self._env.action_spec()])
+        self.action_repeat = action_repeat
+
+        # set seed if provided with task_kwargs
+        if "random" in task_kwargs:
+            seed = task_kwargs["random"]
+            self._observation_space.seed(seed)
+            self._action_space.seed(seed)
 
     def __getattr__(self, name):
+        """Add this here so that we can easily access attributes of the underlying env"""
         return getattr(self._env, name)
 
-    def step(self, action: np.ndarray) -> TimeStep:
-        assert self.action_space.contains(action)
-        time_step = self._env.step(action)
-        reward = time_step.reward or 0
-        done = time_step.last()
-        obs = time_step.observation
+    @property
+    def observation_space(self):
+        return self._observation_space
+
+    @property
+    def action_space(self):
+        return self._action_space
+
+    @property
+    def reward_range(self):
+        """DMC always has a per-step reward range of (0, 1)"""
+        return 0, 1
+    
+    def _convert_action(self, action):
+        action = action.astype(np.float64)
+        true_delta = self._true_action_space.high - self._true_action_space.low
+        norm_delta = self._norm_action_space.high - self._norm_action_space.low
+        action = (action - self._norm_action_space.low) / norm_delta
+        action = action * true_delta + self._true_action_space.low
+        action = action.astype(np.float32)
+        return action
+
+    def step(self, action):
+        assert self._norm_action_space.contains(action)
+        action = self._convert_action(action)
+        assert self._true_action_space.contains(action)
+        reward = 0
         info = {}
-        if done and time_step.discount == 1.0:
-            info['TimeLimit.truncated'] = True
-        return obs, reward, done, info
+        for i in range(self.action_repeat):
+            timestep = self._env.step(action)
+            observation = _flatten_obs(timestep.observation)
+            reward += timestep.reward
+            termination = False  # we never reach a goal
+            truncation = timestep.last()
+            if truncation:
+                return observation, reward, termination, truncation, info
+        return observation, reward, termination, truncation, info
 
-    def reset(self):
-        time_step = self._env.reset()
-        return time_step.observation
+    def reset(self, seed=None, options=None):
+        if seed is not None:
+            if not isinstance(seed, np.random.RandomState):
+                seed = np.random.RandomState(seed)
+            self._env.task._random = seed
 
-    def render(self,
-               mode='rgb_array',
-               height: int = 84,
-               width: int = 84,
-               camera_id: int = 0):
-        assert mode == 'rgb_array', 'only support rgb_array mode, given %s' % mode
+        if options:
+            logging.warn("Currently doing nothing with options={:}".format(options))
+        timestep = self._env.reset()
+        observation = _flatten_obs(timestep.observation)
+        info = {}
+        return observation, info
+
+    def render(self, height=None, width=None, camera_id=None):
+        height = height or self.render_height
+        width = width or self.render_width
+        camera_id = camera_id or self.render_camera_id
         return self._env.physics.render(height=height, width=width, camera_id=camera_id)
-
-def _make_env_dmc(env_name: str, seed: int) -> gym.Env:
-    domain_name, task_name = env_name.split("-")
-    env = dmc2gym(domain_name=domain_name, task_name=task_name, task_kwargs={"random": seed})
-    if isinstance(env.observation_space, gym.spaces.Dict):
-        env = gym.wrappers.FlattenObservation(env)
-    from gym.wrappers import RescaleAction
+    
+def _make_env_dmc(env_name: str, action_repeat: int = 1) -> Env:
+    env = DMCGym(env_name=env_name, action_repeat=action_repeat)
     env = RescaleAction(env, -1.0, 1.0)
-    env = SinglePrecision(env)
-    env.seed(seed)
-    env.action_space.seed(seed)
-    env.observation_space.seed(seed)
+    env = FlattenObservation(env)
     return env
 
-class make_env_dmc(gym.Env):
-    def __init__(self, env_name: str, seed: int, num_envs: int, max_t=1000):
-        env_fns = [lambda i=i: _make_env_dmc(env_name, seed + i) for i in range(num_envs)]
+class make_env_dmc(Env):
+    def __init__(self, env_name: str, seed: int, num_envs: int, max_t: int = 1000, action_repeat: int = 1):
+        np.random.seed(seed)
+        env_fns = [lambda i=i: _make_env_dmc(env_name, action_repeat) for i in range(num_envs)]
         self.envs = [env_fn() for env_fn in env_fns]
         self.max_t = max_t
         self.num_seeds = len(self.envs)
-        self.action_space = spaces.Box(low=self.envs[0].action_space.low[None].repeat(len(self.envs), axis=0),
+        self.action_space = Box(low=self.envs[0].action_space.low[None].repeat(len(self.envs), axis=0),
                                        high=self.envs[0].action_space.high[None].repeat(len(self.envs), axis=0),
                                        shape=(len(self.envs), self.envs[0].action_space.shape[0]),
                                        dtype=self.envs[0].action_space.dtype)
-        self.observation_space = spaces.Box(low=self.envs[0].observation_space.low[None].repeat(len(self.envs), axis=0),
+        self.observation_space = Box(low=self.envs[0].observation_space.low[None].repeat(len(self.envs), axis=0),
                                             high=self.envs[0].observation_space.high[None].repeat(len(self.envs), axis=0),
                                             shape=(len(self.envs), self.envs[0].observation_space.shape[0]),
                                             dtype=self.envs[0].observation_space.dtype)
-
+        
     def _reset_idx(self, idx):
-        return self.envs[idx].reset()
+        seed = np.random.randint(0,1e8)
+        ob, _ = self.envs[idx].reset(seed=seed)
+        return ob
 
     def reset_where_done(self, observations, terms, truns):
         resets = np.zeros((terms.shape))
@@ -108,21 +196,21 @@ class make_env_dmc(gym.Env):
 
     def reset(self):
         obs = []
-        for env in self.envs:
-            obs.append(env.reset())
+        for i in range(len(self.envs)):            
+            obs.append(self._reset_idx(i))
         return np.stack(obs)
 
     def step(self, actions):
+        actions = np.clip(actions, -1.0, 1.0)
         obs, rews, terms, truns = [], [], [], []
         for env, action in zip(self.envs, actions):
-            ob, reward, done, info = env.step(action)
+            ob, rew, term, trun, _ = env.step(action)
             obs.append(ob)
-            rews.append(reward)
-            terms.append(False)
-            trun = True if 'TimeLimit.truncated' in info else False
+            rews.append(rew)
+            terms.append(term)
             truns.append(trun)
         return np.stack(obs), np.stack(rews), np.stack(terms), np.stack(truns), None
-
+    
     def evaluate(self, agent, num_episodes=5, temperature=0.0):
         num_seeds = self.num_seeds
         returns_eval = []

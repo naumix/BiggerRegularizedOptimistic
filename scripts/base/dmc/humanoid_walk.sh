@@ -4,9 +4,9 @@
 source ~/miniconda3/bin/activate
 conda init bash
 source ~/.bashrc
-conda activate jax
+conda activate bro
 
-module load CUDA/12.0.0
+module load cuDNN/8.9.2.26-CUDA-12.2.0
 
 python3 train_parallel.py --env_name=humanoid-walk
 
