@@ -4,7 +4,8 @@ numpy==1.26.4
 scipy==1.12.0
 gym==0.20.0
 jax[cuda12_pip]==0.4.19 
--f https://storage.googleapis.com/jax-releases/jax_cuda_releases.htmlflax==0.7.5
+-f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+flax==0.7.5
 dm_control==1.0.14
 brax==0.0.16
 imageio
