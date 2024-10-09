@@ -77,7 +77,14 @@ class BroNetActor(nn.Module):
         return means, stds
     
 class BRO(nn.Module):
-    def __init__(self, state_size, action_size, pessimism, learning_rate, n_quantiles, discount, device='cpu'):
+    def __init__(self, 
+                 state_size, 
+                 action_size, 
+                 pessimism: float = 1.0, 
+                 learning_rate: float = 3e-4, 
+                 n_quantiles: int = 100, 
+                 discount: float = 0.99, 
+                 device='cpu'):
         super().__init__()
         self.discount = discount
         self.pessimism = pessimism
