@@ -8,4 +8,4 @@ imageio
 tfp-nightly==0.20.0.dev20230524
 wandb
 ml_collections
-gymnasium
+gymnasium==0.29.1
