@@ -6,13 +6,13 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 
-from jaxrl.bro import temperature
-from jaxrl.bro.actor import update as update_actor
-from jaxrl.bro.actor import update_optimistic as update_actor_optimistic
+from jaxrl.sac import temperature
+from jaxrl.sac.actor import update as update_actor
+from jaxrl.sac.actor import update_optimistic as update_actor_optimistic
 
-from jaxrl.bro.critic import target_update
-from jaxrl.bro.critic import update as update_critic
-from jaxrl.bro.critic import update_quantile as update_critic_quantile
+from jaxrl.sac.critic import target_update
+from jaxrl.sac.critic import update as update_critic
+from jaxrl.sac.critic import update_quantile as update_critic_quantile
 
 from jaxrl.replay_buffer import Batch
 from jaxrl.networks import critic_net, policies
@@ -47,18 +47,15 @@ def _update(
     rng, key = jax.random.split(rng)
     new_actor, actor_info = update_actor(key, actor, new_critic, temp, batch, pessimism, distributional)   
     rng, key = jax.random.split(rng)
-    new_actor_o, actor_o_info = update_actor_optimistic(key, new_actor, actor_o, new_critic, optimism, regularizer, batch, std_multiplier, distributional)
+    new_actor_o = actor_o
     new_temp, alpha_info = temperature.update_temperature(temp, actor_info['entropy'], target_entropy)
-    empirical_kl = actor_o_info['kl'] / action_dim
-    new_optimism, optimism_info = temperature.update_optimism(optimism, empirical_kl, kl_target, pessimism)
-    new_regularizer, regularizer_info = temperature.update_regularizer(regularizer, empirical_kl, kl_target)
+    #empirical_kl = actor_o_info['kl'] / action_dim
+    new_optimism = optimism
+    new_regularizer = regularizer
     return rng, new_actor, new_actor_o, new_critic, new_target_critic, new_temp, new_optimism, new_regularizer, {
         **critic_info,
         **actor_info,
-        **actor_o_info,
         **alpha_info,
-        **optimism_info,
-        **regularizer_info
     }
 
 @functools.partial(
@@ -127,7 +124,7 @@ def _do_multiple_updates(
     )
     return jax.lax.fori_loop(1, num_updates, one_step, (step, rng, actor, actor_o, critic, target_critic, temp, optimism, regularizer, info))
 
-class BRO(object):
+class SAC(object):
     def __init__(
         self,
         seed: int,
@@ -143,31 +140,28 @@ class BRO(object):
         init_temperature: float = 1.0,
         init_optimism: float = 1.0,
         init_regularizer: float = 0.25,
-        pessimism: float = 0.0,
+        pessimism: float = 1.0,
         num_seeds: int = 5,
-        updates_per_step: int = 10,
-        distributional: bool = True,
-        n_quantiles: int = 100,
+        updates_per_step: int = 2,
+        distributional: bool = False,
+        n_quantiles: int = 1,
         kl_target: float = 0.05,
         std_multiplier: float = 0.75,
     ) -> None:
         
         self.seed = seed
-        self.distributional = distributional
+        self.distributional = False
         self.n_quantiles = n_quantiles
         self.std_multiplier = std_multiplier
         action_dim = actions.shape[-1]
         self.action_dim = float(action_dim)
         self.kl_target = kl_target
-        self.pessimism = pessimism
+        self.pessimism = 1.0
         quantile_taus = jnp.arange(0, n_quantiles+1) / n_quantiles
         self.quantile_taus = ((quantile_taus[1:] + quantile_taus[:-1]) / 2.0)[None, ...]
         self.target_entropy = -self.action_dim / 2 if target_entropy is None else target_entropy
         self.tau = tau
         self.discount = discount
-        self.reset_list = [15001, 50001, 250001, 500001, 750001, 1000001, 1500001, 2000001]
-        if updates_per_step == 2:
-            self.reset_list = self.reset_list[:1]
         self.num_seeds = num_seeds
         
         output_nodes = self.n_quantiles if self.distributional else 1
@@ -175,9 +169,9 @@ class BRO(object):
         def _init_models(seed):
             rng = jax.random.PRNGKey(seed)
             rng, actor_key, critic_key, temp_key, pessimism_key, actor_o_key, optimism_key, regularizer_key = jax.random.split(rng, 8)
-            actor_def = policies.NormalTanhPolicy(action_dim, use_bronet=True)
-            actor_o_def = policies.DualTanhPolicy(action_dim, use_bronet=True)
-            critic_def = critic_net.DoubleCritic(output_nodes=output_nodes, use_bronet=True)
+            actor_def = policies.NormalTanhPolicy(action_dim, hidden_dims=256, depth=1, use_bronet=False)
+            actor_o_def = policies.DualTanhPolicy(action_dim, hidden_dims=256, depth=1, use_bronet=False)
+            critic_def = critic_net.DoubleCritic(output_nodes=output_nodes, hidden_dims=256, depth=1, use_bronet=False)
             
             actor = Model.create(actor_def, inputs=[actor_key, observations, jnp.eye(10)[:,:,None]], tx=optax.adamw(learning_rate=actor_lr))
             actor_o = Model.create(actor_o_def, inputs=[actor_o_key, observations, jnp.eye(10)[:,:,None], actions, actions, self.std_multiplier], tx=optax.adamw(learning_rate=actor_lr))
@@ -207,7 +201,7 @@ class BRO(object):
         return np.clip(actions, -1, 1)
     
     def sample_actions_o(self, observations: np.ndarray, task_ids: np.ndarray, temperature: float = 1.0) -> jnp.ndarray:
-        rng, actions = policies.sample_actions_o(self.rng, self.actor_o.apply_fn, self.actor_o.params, self.actor.apply_fn, self.actor.params, observations, task_ids, self.std_multiplier, temperature)
+        rng, actions = policies.sample_actions(self.rng, self.actor.apply_fn, self.actor.params, observations, task_ids, temperature)
         self.rng = rng
         actions = np.asarray(actions)
         return np.clip(actions, -1, 1)

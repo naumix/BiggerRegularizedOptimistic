@@ -10,7 +10,7 @@ def update(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
     next_actions = dist.sample(seed=key)
     next_log_probs = dist.log_prob(next_actions)
     next_q1, next_q2 = target_critic(batch.next_observations, next_actions, batch.task_ids)
-    next_q = (next_q1 + next_q2) / 2 - pessimism * jnp.abs(next_q1 - next_q2) / 2
+    next_q = (next_q1 + next_q2) / 2 - 1.0 * jnp.abs(next_q1 - next_q2) / 2
     target_q = batch.rewards + discount * batch.masks * next_q
     target_q -= discount * temp() * batch.masks * next_log_probs
     def critic_loss_fn(critic_params: Params) -> Tuple[jnp.ndarray, InfoDict]:
@@ -39,7 +39,7 @@ def update_quantile(key: PRNGKey, actor: Model, quantile_critic: Model, target_q
     next_actions = dist.sample(seed=key)
     next_log_probs = dist.log_prob(next_actions)
     next_q1, next_q2 = target_quantile_critic(batch.next_observations, next_actions, batch.task_ids)
-    next_q = (next_q1 + next_q2) / 2 - pessimism * jnp.abs(next_q1 - next_q2) / 2
+    next_q = (next_q1 + next_q2) / 2 - 1.0 * jnp.abs(next_q1 - next_q2) / 2
     target_q = batch.rewards[..., None, None] + discount * batch.masks[..., None, None]  * next_q[:, None, :]
     target_q -= discount * temp().mean() * batch.masks[..., None, None] * next_log_probs[..., None, None]
     def critic_loss_fn(quantile_critic_params: Params) -> Tuple[jnp.ndarray, InfoDict]:
