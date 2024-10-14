@@ -53,7 +53,7 @@ def main(_):
         entity='naumix',
         project='BRO',
         group=f'{FLAGS.env_name}',
-        name=f'BRO_Quantile:{FLAGS.distributional}_BS:{FLAGS.batch_size}_RR:{FLAGS.updates_per_step}'
+        name=f'{FLAGS.algo}_RR:{FLAGS.updates_per_step}_{FLAGS.seed}'
     )
     os.makedirs(save_dir, exist_ok=True)
     env = make_env_mt(FLAGS.seed)
@@ -103,7 +103,6 @@ def main(_):
         observations, terms, truns, reward_mask = env.reset_where_done(observations, terms, truns)
         if i >= FLAGS.start_training:
             batches = replay_buffer.sample_parallel_multibatch(FLAGS.batch_size*10, FLAGS.updates_per_step)
-            obs = batches.observations
             infos = agent.update(batches, FLAGS.updates_per_step, i)
             log_to_wandb_if_time_to(i, infos, FLAGS.eval_interval)
         evaluate_if_time_to(i, agent, eval_env, FLAGS.eval_interval, FLAGS.eval_episodes, eval_returns, list(range(FLAGS.seed, FLAGS.seed+FLAGS.num_seeds)), save_dir)
