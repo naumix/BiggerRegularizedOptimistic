@@ -68,17 +68,18 @@ class make_env_mt(gym.Env):
         return np.stack(obs), np.stack(rews), np.stack(terms), np.stack(truns), np.stack(goals)
     
     def evaluate(self, agent, num_episodes=5, temperature=0.0):
-        n_seeds = self.num_seeds
+        n_seeds = 10
         goals = []
         returns_eval = []
+        task_ids = np.eye(10)[:,:,None]
         for _episode in range(num_episodes):
             observations = self.reset()
             returns = np.zeros(n_seeds)
             goal = 0.0
-            for i in range(self.max_t): # CHANGE?
-                actions = agent.sample_actions(observations, temperature=temperature)
+            for i in range(500): # CHANGE?
+                actions = agent.sample_actions(observations, task_ids, temperature=temperature)
                 next_observations, rewards, terms, truns, goals_ = self.step(actions)
-                goal += goals_ / self.max_t
+                goal += goals_ / 500
                 returns += rewards
                 observations = next_observations            
             goal[goal > 0] = 1.0

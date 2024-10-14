@@ -4,7 +4,6 @@ os.environ['MUJOCO_GL'] = 'egl'
 
 import random
 import numpy as np
-import tqdm
 from absl import app, flags
 from ml_collections import config_flags
 
@@ -13,7 +12,6 @@ from jaxrl.sac.sac_learner import SAC
 from jaxrl.replay_buffer import ParallelReplayBuffer
 from jaxrl.utils import mute_warning, log_to_wandb_if_time_to, evaluate_if_time_to
 from jaxrl.envs.multitask_gym import make_env_mt
-import jax.numpy as jnp
 
 import wandb
 
@@ -40,10 +38,11 @@ config_flags.DEFINE_config_file('config', 'configs/bro_default.py', 'File path t
 class flags:
     seed=0
     replay_buffer_size=int(1e6)
-    max_steps=int(128)
+    max_steps=int(500)
     start_training=int(10000)
     batch_size=int(128)
     updates_per_step=int(8)
+    algo='BRO'
     
     
 FLAGS = flags()
@@ -68,25 +67,36 @@ def main(_):
     all_kwargs = FLAGS.flag_values_dict()
     all_kwargs.update(all_kwargs.pop('config'))
     kwargs = dict(FLAGS.config)
-    kwargs['updates_per_step'] = FLAGS.updates_per_step
-    kwargs['distributional'] = FLAGS.distributional
-    
     task_ids = np.eye(10)[:,:,None]
 
-    agent = BRO(
-        FLAGS.seed,
-        env.observation_space.sample()[0, np.newaxis],
-        env.action_space.sample()[0, np.newaxis],
-        num_seeds=1,
-        #**kwargs,
-    )
-    
+    if FLAGS.algo == 'BRO':
+        kwargs['updates_per_step'] = FLAGS.updates_per_step
+        kwargs['distributional'] = FLAGS.distributional    
+        agent = BRO(
+            FLAGS.seed,
+            env.observation_space.sample()[0, np.newaxis],
+            env.action_space.sample()[0, np.newaxis],
+            num_seeds=1,
+            #**kwargs,
+        )
+    else:
+        kwargs['updates_per_step'] = 1
+        kwargs['distributional'] = False  
+        agent = SAC(
+            FLAGS.seed,
+            env.observation_space.sample()[0, np.newaxis],
+            env.action_space.sample()[0, np.newaxis],
+            num_seeds=1,
+            #**kwargs,
+        )
+        
     replay_buffer = ParallelReplayBuffer(env.observation_space, env.action_space.shape[-1], FLAGS.replay_buffer_size, num_seeds=10)
     observations = env.reset() 
     eval_returns = [[] for _ in range(10)]
     for i in range(1, FLAGS.max_steps + 1):
         actions = env.action_space.sample() if i < FLAGS.start_training else agent.sample_actions_o(observations, task_ids, temperature=1.0)
         next_observations, rewards, terms, truns, _ = env.step(actions)
+        print(i, truns)
         masks = env.generate_masks(terms, truns)
         replay_buffer.insert(observations, actions, rewards, masks, truns, next_observations, task_ids)
         observations = next_observations
@@ -96,7 +106,7 @@ def main(_):
             infos = agent.update(batches, FLAGS.updates_per_step, i)
             log_to_wandb_if_time_to(i, infos, FLAGS.eval_interval)
         evaluate_if_time_to(i, agent, eval_env, FLAGS.eval_interval, FLAGS.eval_episodes, eval_returns, list(range(FLAGS.seed, FLAGS.seed+FLAGS.num_seeds)), save_dir)
-
+        eval_env.evaluate(agent, 1, 0.0)
 
 if __name__ == '__main__':
     app.run(main)
