@@ -8,3 +8,4 @@ tfp-nightly==0.20.0.dev20230524
 wandb
 ml_collections
 git+https://github.com/Farama-Foundation/Metaworld.git@master#egg=metaworld
+gym

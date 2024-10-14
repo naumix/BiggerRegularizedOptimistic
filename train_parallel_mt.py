@@ -34,6 +34,7 @@ flags.DEFINE_boolean('distributional', True, 'Use tqdm progress bar.')
 
 config_flags.DEFINE_config_file('config', 'configs/bro_default.py', 'File path to the training hyperparameter configuration.', lock_config=False)
 
+'''
 class flags:
     seed=0
     replay_buffer_size=int(1e6)
@@ -43,17 +44,18 @@ class flags:
     updates_per_step=int(8)
     algo='BRO'
     
-    
 FLAGS = flags()
 
+'''   
+    
 def main(_):
-    save_dir = f'./results/{FLAGS.env_name}_RR{str(FLAGS.updates_per_step)}/'
+    save_dir = f'./results/RR10/'
     wandb.init(
         config=FLAGS,
         entity='naumix',
         project='BRO',
-        group=f'{FLAGS.env_name}',
-        name=f'{FLAGS.algo}_RR:{FLAGS.updates_per_step}_{FLAGS.seed}'
+        group=f'MT',
+        name=f'{FLAGS.algo}_{FLAGS.seed}'
     )
     os.makedirs(save_dir, exist_ok=True)
     env = make_env_mt(FLAGS.seed)
@@ -69,7 +71,7 @@ def main(_):
     task_ids = np.eye(10)[:,:,None]
 
     if FLAGS.algo == 'BRO':
-        FLAGS.updates_per_step = 10
+        updates_per_step = 10
         kwargs['updates_per_step'] = FLAGS.updates_per_step
         kwargs['distributional'] = FLAGS.distributional    
         agent = BRO(
@@ -80,7 +82,7 @@ def main(_):
             #**kwargs,
         )
     else:
-        FLAGS.updates_per_step = 1
+        updates_per_step = 1
         kwargs['updates_per_step'] = 1
         kwargs['distributional'] = False  
         agent = SAC(
@@ -102,10 +104,10 @@ def main(_):
         observations = next_observations
         observations, terms, truns, reward_mask = env.reset_where_done(observations, terms, truns)
         if i >= FLAGS.start_training:
-            batches = replay_buffer.sample_parallel_multibatch(FLAGS.batch_size*10, FLAGS.updates_per_step)
-            infos = agent.update(batches, FLAGS.updates_per_step, i)
+            batches = replay_buffer.sample_parallel_multibatch(FLAGS.batch_size*10, updates_per_step)
+            infos = agent.update(batches, updates_per_step, i)
             log_to_wandb_if_time_to(i, infos, FLAGS.eval_interval)
-        evaluate_if_time_to(i, agent, eval_env, FLAGS.eval_interval, FLAGS.eval_episodes, eval_returns, list(range(FLAGS.seed, FLAGS.seed+FLAGS.num_seeds)), save_dir)
+        evaluate_if_time_to(i, agent, eval_env, FLAGS.eval_interval, FLAGS.eval_episodes, eval_returns, list(range(FLAGS.seed, FLAGS.seed+10)), save_dir)
         eval_env.evaluate(agent, 1, 0.0)
 
 if __name__ == '__main__':
