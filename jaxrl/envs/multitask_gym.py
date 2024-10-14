@@ -5,10 +5,12 @@ from gymnasium import spaces
 import random
         
 class make_env_mt(gym.Env):
-    def __init__(self, seed):
+    def __init__(self, seed, max_t=201):
         #seed = 0
         np.random.seed(seed)
         mt_env = metaworld.MT10(seed=seed)
+        self.max_t = max_t
+        self.timestep = np.zeros(10)
         envs = []
         for name, env_cls in mt_env.train_classes.items():
             env = env_cls()
@@ -25,7 +27,7 @@ class make_env_mt(gym.Env):
                                             shape=(len(self.envs), self.envs[0].observation_space.shape[0]),
                                             dtype=self.envs[0].observation_space.dtype)
         
-    def reset_idx(self, idx):
+    def _reset_idx(self, idx):
         seed = np.random.randint(0,1e6)
         obs, _ = self.envs[idx].reset(seed=seed)
         return obs
@@ -36,10 +38,12 @@ class make_env_mt(gym.Env):
             if (term == True) or (trun == True):
                 observations[j], terms[j], truns[j] = self._reset_idx(j), False, False
                 resets[j] = 1
+                self.timestep[j] = 1
         return observations, terms, truns, resets
     
     def reset(self):
         obs = []
+        self.timestep = np.zeros(10)
         for env in self.envs:
             ob, _ = env.reset()
             obs.append(ob)
@@ -57,9 +61,13 @@ class make_env_mt(gym.Env):
         return masks
 
     def step(self, actions):
+        self.timestep += 1
         obs, rews, terms, truns, goals = [], [], [], [], []
-        for env, action in zip(self.envs, actions):
-            ob, reward, term, trun, info = env.step(action)
+        for i, (env, action) in enumerate(zip(self.envs, actions)):
+            ob, reward, term, _, info = env.step(action)
+            trun = False
+            if self.timestep[i] == self.max_t:
+                trun = True
             obs.append(ob)
             rews.append(reward)
             terms.append(term)
@@ -76,10 +84,10 @@ class make_env_mt(gym.Env):
             observations = self.reset()
             returns = np.zeros(n_seeds)
             goal = 0.0
-            for i in range(500): # CHANGE?
+            for i in range(self.max_t): # CHANGE?
                 actions = agent.sample_actions(observations, task_ids, temperature=temperature)
                 next_observations, rewards, terms, truns, goals_ = self.step(actions)
-                goal += goals_ / 500
+                goal += goals_ / self.max_t
                 returns += rewards
                 observations = next_observations            
             goal[goal > 0] = 1.0

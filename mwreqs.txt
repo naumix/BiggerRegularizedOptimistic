@@ -1,0 +1,10 @@
+numpy==1.26.4
+scipy==1.12.0
+jax[cuda12_pip]==0.4.19 
+-f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+flax==0.7.5
+imageio
+tfp-nightly==0.20.0.dev20230524
+wandb
+ml_collections
+git+https://github.com/Farama-Foundation/Metaworld.git@master#egg=metaworld

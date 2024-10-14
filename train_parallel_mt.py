@@ -29,7 +29,6 @@ flags.DEFINE_integer('max_steps', int(1000000), 'Number of training steps.')
 flags.DEFINE_integer('replay_buffer_size', int(1000000), 'Number of training steps.')
 flags.DEFINE_integer('start_training', int(2500),'Number of training steps to start training.')
 flags.DEFINE_boolean('tqdm', False, 'Use tqdm progress bar.')
-flags.DEFINE_integer('updates_per_step', 10, 'Number of updates per step.')
 flags.DEFINE_boolean('distributional', True, 'Use tqdm progress bar.')
 
 
@@ -70,6 +69,7 @@ def main(_):
     task_ids = np.eye(10)[:,:,None]
 
     if FLAGS.algo == 'BRO':
+        FLAGS.updates_per_step = 10
         kwargs['updates_per_step'] = FLAGS.updates_per_step
         kwargs['distributional'] = FLAGS.distributional    
         agent = BRO(
@@ -80,6 +80,7 @@ def main(_):
             #**kwargs,
         )
     else:
+        FLAGS.updates_per_step = 1
         kwargs['updates_per_step'] = 1
         kwargs['distributional'] = False  
         agent = SAC(
@@ -93,16 +94,16 @@ def main(_):
     replay_buffer = ParallelReplayBuffer(env.observation_space, env.action_space.shape[-1], FLAGS.replay_buffer_size, num_seeds=10)
     observations = env.reset() 
     eval_returns = [[] for _ in range(10)]
-    for i in range(1, FLAGS.max_steps + 1):
+    for i in range(0, FLAGS.max_steps):
         actions = env.action_space.sample() if i < FLAGS.start_training else agent.sample_actions_o(observations, task_ids, temperature=1.0)
         next_observations, rewards, terms, truns, _ = env.step(actions)
-        print(i, truns)
         masks = env.generate_masks(terms, truns)
         replay_buffer.insert(observations, actions, rewards, masks, truns, next_observations, task_ids)
         observations = next_observations
         observations, terms, truns, reward_mask = env.reset_where_done(observations, terms, truns)
         if i >= FLAGS.start_training:
             batches = replay_buffer.sample_parallel_multibatch(FLAGS.batch_size*10, FLAGS.updates_per_step)
+            obs = batches.observations
             infos = agent.update(batches, FLAGS.updates_per_step, i)
             log_to_wandb_if_time_to(i, infos, FLAGS.eval_interval)
         evaluate_if_time_to(i, agent, eval_env, FLAGS.eval_interval, FLAGS.eval_episodes, eval_returns, list(range(FLAGS.seed, FLAGS.seed+FLAGS.num_seeds)), save_dir)

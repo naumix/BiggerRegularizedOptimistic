@@ -163,6 +163,7 @@ class SAC(object):
         self.tau = tau
         self.discount = discount
         self.num_seeds = num_seeds
+        self.reset_list = []
         
         output_nodes = self.n_quantiles if self.distributional else 1
 
