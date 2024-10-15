@@ -251,4 +251,4 @@ class BRO(object):
 
     def reset(self):
         self.step = 1
-        self.actor, self.actor_o, self.critic, self.target_critic, self.temp, self.optimism, self.regularizer, self.rng = self.init_models(self.seeds)
+        self.actor, self.actor_o, self.critic, self.target_critic, self.temp, self.optimism, self.regularizer, self.rng = self.init_models(self.seed)

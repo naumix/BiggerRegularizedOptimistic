@@ -72,14 +72,14 @@ def main(_):
 
     if FLAGS.algo == 'BRO':
         updates_per_step = 10
-        kwargs['updates_per_step'] = FLAGS.updates_per_step
+        kwargs['updates_per_step'] = updates_per_step
         kwargs['distributional'] = FLAGS.distributional    
         agent = BRO(
             FLAGS.seed,
             env.observation_space.sample()[0, np.newaxis],
             env.action_space.sample()[0, np.newaxis],
             num_seeds=1,
-            #**kwargs,
+            **kwargs,
         )
     else:
         updates_per_step = 1
@@ -90,7 +90,7 @@ def main(_):
             env.observation_space.sample()[0, np.newaxis],
             env.action_space.sample()[0, np.newaxis],
             num_seeds=1,
-            #**kwargs,
+            **kwargs,
         )
         
     replay_buffer = ParallelReplayBuffer(env.observation_space, env.action_space.shape[-1], FLAGS.replay_buffer_size, num_seeds=10)
@@ -108,7 +108,6 @@ def main(_):
             infos = agent.update(batches, updates_per_step, i)
             log_to_wandb_if_time_to(i, infos, FLAGS.eval_interval)
         evaluate_if_time_to(i, agent, eval_env, FLAGS.eval_interval, FLAGS.eval_episodes, eval_returns, list(range(FLAGS.seed, FLAGS.seed+10)), save_dir)
-        eval_env.evaluate(agent, 1, 0.0)
 
 if __name__ == '__main__':
     app.run(main)

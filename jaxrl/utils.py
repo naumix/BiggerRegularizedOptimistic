@@ -12,12 +12,19 @@ def mute_warning():
             return 'check_types' not in record.getMessage()
     logger.addFilter(CheckTypesFilter())
 
-def log_to_wandb_if_time_to(step, infos, eval_interval, suffix: str = ''):
+def log_to_wandb_if_time_to1(step, infos, eval_interval, suffix: str = ''):
     if step % eval_interval == 0:
         dict_to_log = {'timestep': step}
         for info_key in infos:
             for seed, value in enumerate(infos[info_key]):
                 dict_to_log[f'seed{seed}/{info_key}{suffix}'] = value
+        wandb.log(dict_to_log, step=step)
+        
+def log_to_wandb_if_time_to(step, infos, eval_interval, suffix: str = ''):
+    if step % eval_interval == 0:
+        dict_to_log = {'timestep': step}
+        for info_key in infos:
+            dict_to_log[f'seed/{info_key}{suffix}'] = infos[info_key]
         wandb.log(dict_to_log, step=step)
 
 def evaluate_if_time_to(i, agent, eval_env, eval_interval, eval_episodes, eval_returns, seeds, save_dir):
@@ -26,7 +33,7 @@ def evaluate_if_time_to(i, agent, eval_env, eval_interval, eval_episodes, eval_r
         for j, seed in enumerate(seeds):
             eval_returns[j].append((i, eval_stats['return'][j]))
             np.savetxt(os.path.join(save_dir, f'{seed}.txt'), eval_returns[j], fmt=['%d', '%.1f'])
-        log_to_wandb_if_time_to(i, eval_stats, eval_interval, suffix='_eval')
+        log_to_wandb_if_time_to1(i, eval_stats, eval_interval, suffix='_eval')
         
 def make_env(benchmark, env_name, seed, num_envs):
     if benchmark == 'dmc':
