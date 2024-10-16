@@ -73,7 +73,7 @@ def main(_):
     task_ids = np.eye(FLAGS.task_type)
 
     if FLAGS.algo == 'BRO':
-        updates_per_step = 10
+        updates_per_step = 8
         kwargs['updates_per_step'] = updates_per_step
         kwargs['distributional'] = FLAGS.distributional    
         agent = BRO(
@@ -108,7 +108,7 @@ def main(_):
         observations = next_observations
         observations, terms, truns, reward_mask = env.reset_where_done(observations, terms, truns)
         if i >= FLAGS.start_training:
-            batches = replay_buffer.sample_parallel_multibatch(100*FLAGS.task_type, updates_per_step)
+            batches = replay_buffer.sample_parallel_multibatch(128*FLAGS.task_type, updates_per_step)
             infos = agent.update(batches, updates_per_step, i)
             log_to_wandb_if_time_to(i, infos, FLAGS.eval_interval)
         evaluate_if_time_to(i, agent, eval_env, FLAGS.eval_interval, FLAGS.eval_episodes, eval_returns, list(range(FLAGS.seed, FLAGS.seed+FLAGS.task_type)), save_dir)
