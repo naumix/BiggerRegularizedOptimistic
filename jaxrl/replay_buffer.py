@@ -19,7 +19,7 @@ class ParallelReplayBuffer:
         self.masks = np.empty((capacity*num_seeds, ), dtype=np.float32)
         self.dones_float = np.empty((capacity*num_seeds, ), dtype=np.float32)
         self.next_observations = np.empty((capacity*num_seeds, observation_space.shape[-1]), dtype=observation_space.dtype)
-        self.task_ids = np.empty((num_seeds, capacity*num_seeds, 1), dtype=np.float32)
+        self.task_ids = np.empty((capacity*num_seeds, num_seeds), dtype=np.float32)
         self.size = 0
         self.insert_index = 0
         self.capacity = capacity
@@ -34,7 +34,7 @@ class ParallelReplayBuffer:
         self.masks[self.insert_index:self.insert_index+self.num_seeds] = mask
         self.dones_float[self.insert_index:self.insert_index+self.num_seeds] = done_float
         self.next_observations[self.insert_index:self.insert_index+self.num_seeds] = next_observation
-        self.task_ids[:,self.insert_index:self.insert_index+self.num_seeds, :] = task_ids
+        self.task_ids[self.insert_index:self.insert_index+self.num_seeds] = task_ids
         self.insert_index = (self.insert_index + self.num_seeds) % self.capacity
         self.size = min(self.size + self.num_seeds, self.capacity)
 
@@ -57,7 +57,7 @@ class ParallelReplayBuffer:
                      masks=self.masks[indxs],
                      dones=self.dones_float[indxs],
                      next_observations=self.next_observations[indxs],
-                     task_ids=np.swapaxes(self.task_ids[:,indxs], 0, 1))
+                     task_ids=self.task_ids[indxs])
     
     def sample_state(self, batch_size: int) -> np.ndarray:
         indx = np.random.randint(self.size, size=batch_size)

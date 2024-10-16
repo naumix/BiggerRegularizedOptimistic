@@ -21,6 +21,7 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('save_dir', './tmp/', 'Tensorboard logging dir.')
 flags.DEFINE_string('algo', 'BRO', 'Tensorboard logging dir.')
+flags.DEFINE_integer('task_type', int(10),'Number of training steps to start training.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_integer('eval_episodes', 5, 'Number of episodes used for evaluation.')
 flags.DEFINE_integer('eval_interval', 25000, 'Eval interval.')
@@ -54,7 +55,7 @@ def main(_):
         config=FLAGS,
         entity='naumix',
         project='BRO',
-        group=f'MT',
+        group=f'MT_{FLAGS.task_type}',
         name=f'{FLAGS.algo}_{FLAGS.seed}'
     )
     os.makedirs(save_dir, exist_ok=True)
@@ -68,7 +69,7 @@ def main(_):
     all_kwargs = FLAGS.flag_values_dict()
     all_kwargs.update(all_kwargs.pop('config'))
     kwargs = dict(FLAGS.config)
-    task_ids = np.eye(10)[:,:,None]
+    task_ids = np.eye(FLAGS.task_type)
 
     if FLAGS.algo == 'BRO':
         updates_per_step = 10
@@ -93,9 +94,9 @@ def main(_):
             **kwargs,
         )
         
-    replay_buffer = ParallelReplayBuffer(env.observation_space, env.action_space.shape[-1], FLAGS.replay_buffer_size, num_seeds=10)
+    replay_buffer = ParallelReplayBuffer(env.observation_space, env.action_space.shape[-1], FLAGS.replay_buffer_size, num_seeds=FLAGS.task_type)
     observations = env.reset() 
-    eval_returns = [[] for _ in range(10)]
+    eval_returns = [[] for _ in range(FLAGS.task_type)]
     for i in range(0, FLAGS.max_steps):
         actions = env.action_space.sample() if i < FLAGS.start_training else agent.sample_actions_o(observations, task_ids, temperature=1.0)
         next_observations, rewards, terms, truns, _ = env.step(actions)
@@ -104,10 +105,10 @@ def main(_):
         observations = next_observations
         observations, terms, truns, reward_mask = env.reset_where_done(observations, terms, truns)
         if i >= FLAGS.start_training:
-            batches = replay_buffer.sample_parallel_multibatch(FLAGS.batch_size*10, updates_per_step)
+            batches = replay_buffer.sample_parallel_multibatch(FLAGS.batch_size*FLAGS.task_type, updates_per_step)
             infos = agent.update(batches, updates_per_step, i)
             log_to_wandb_if_time_to(i, infos, FLAGS.eval_interval)
-        evaluate_if_time_to(i, agent, eval_env, FLAGS.eval_interval, FLAGS.eval_episodes, eval_returns, list(range(FLAGS.seed, FLAGS.seed+10)), save_dir)
+        evaluate_if_time_to(i, agent, eval_env, FLAGS.eval_interval, FLAGS.eval_episodes, eval_returns, list(range(FLAGS.seed, FLAGS.seed+FLAGS.task_type)), save_dir)
 
 if __name__ == '__main__':
     app.run(main)

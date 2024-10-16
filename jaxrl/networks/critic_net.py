@@ -9,7 +9,7 @@ from jaxrl.networks.common import MLPClassic, BroNet
 
 
 class Critic(nn.Module):
-    hidden_dims: int = 512
+    hidden_dims: int = 1024
     depth: int = 2
     activations: Callable[[jnp.ndarray], jnp.ndarray] = nn.relu
     output_nodes: int = 1
@@ -18,13 +18,11 @@ class Critic(nn.Module):
 
     @nn.compact
     def __call__(self, observations: jnp.ndarray, actions: jnp.ndarray, task_ids: jnp.ndarray) -> jnp.ndarray:
-        inputs = jnp.concatenate([observations, actions], -1)
+        inputs = jnp.concatenate([observations, actions, task_ids], -1)
         if self.use_bronet:
-            critic = BroNet(hidden_dims=self.hidden_dims, depth=self.depth, activations=self.activations, add_final_layer=True, output_nodes=self.output_nodes*self.num_envs)(inputs)
+            critic = BroNet(hidden_dims=self.hidden_dims, depth=self.depth, activations=self.activations, add_final_layer=True, output_nodes=self.output_nodes)(inputs)
         else:
-            critic = MLPClassic(hidden_dims=self.hidden_dims, depth=self.depth, activations=self.activations, add_final_layer=True, output_nodes=self.output_nodes*self.num_envs)(inputs)
-        critic = jnp.stack(jnp.split(critic, self.num_envs, axis=-1))
-        critic = (critic * task_ids).sum(0)
+            critic = MLPClassic(hidden_dims=self.hidden_dims, depth=self.depth, activations=self.activations, add_final_layer=True, output_nodes=self.output_nodes)(inputs)
         if self.output_nodes == 1:
             return jnp.squeeze(critic, -1)
         else:

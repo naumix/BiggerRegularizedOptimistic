@@ -174,10 +174,10 @@ class SAC(object):
             actor_o_def = policies.DualTanhPolicy(action_dim, hidden_dims=256, depth=1, use_bronet=False)
             critic_def = critic_net.DoubleCritic(output_nodes=output_nodes, hidden_dims=256, depth=1, use_bronet=False)
             
-            actor = Model.create(actor_def, inputs=[actor_key, observations, jnp.eye(10)[:,:,None]], tx=optax.adamw(learning_rate=actor_lr))
-            actor_o = Model.create(actor_o_def, inputs=[actor_o_key, observations, jnp.eye(10)[:,:,None], actions, actions, self.std_multiplier], tx=optax.adamw(learning_rate=actor_lr))
-            critic = Model.create(critic_def, inputs=[critic_key, observations, actions, jnp.eye(10)[:,:,None]], tx=optax.adamw(learning_rate=critic_lr))
-            target_critic = Model.create(critic_def, inputs=[critic_key, observations, actions, jnp.eye(10)[:,:,None]])
+            actor = Model.create(actor_def, inputs=[actor_key, observations, jnp.eye(10)[0][None, :]], tx=optax.adamw(learning_rate=actor_lr))
+            actor_o = Model.create(actor_o_def, inputs=[actor_o_key, observations, jnp.eye(10)[0][None, :], actions, actions, self.std_multiplier], tx=optax.adamw(learning_rate=actor_lr))
+            critic = Model.create(critic_def, inputs=[critic_key, observations, actions, jnp.eye(10)[0][None, :]], tx=optax.adamw(learning_rate=critic_lr))
+            target_critic = Model.create(critic_def, inputs=[critic_key, observations, actions, jnp.eye(10)[0][None, :]])
             
             temp = Model.create(temperature.Temperature(init_temperature), inputs=[temp_key], tx=optax.adam(learning_rate=temp_lr, b1=0.5))
             log_val_min, log_val_max = -10.0, 7.5

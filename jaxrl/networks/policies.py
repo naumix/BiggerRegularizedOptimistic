@@ -32,14 +32,12 @@ class DualTanhPolicy(nn.Module):
                  stds: jnp.ndarray,
                  std_multiplier: float,
                  return_params: bool = True) -> jnp.ndarray:
-        inputs = jnp.concatenate([observations, means], -1)
+        inputs = jnp.concatenate([observations, means, task_ids], -1)
         if self.use_bronet:
             outputs = BroNet(hidden_dims=self.hidden_dims, depth=self.depth, activations=self.activations, add_final_layer=False, output_nodes=None)(inputs)
         else:
             outputs = MLPClassic(hidden_dims=self.hidden_dims, depth=self.depth, activations=self.activations, add_final_layer=False, output_nodes=None)(inputs)
-        action_shift = nn.Dense(self.action_dim*self.num_envs, kernel_init=default_init(scale=self.scale_means), use_bias=False)(outputs)
-        action_shift = jnp.stack(jnp.split(action_shift, self.num_envs, axis=-1))
-        action_shift = (action_shift * task_ids).sum(0)
+        action_shift = nn.Dense(self.action_dim, kernel_init=default_init(scale=self.scale_means), use_bias=False)(outputs)
         optimistic_means = means + action_shift
         mult = jnp.ones(1) * std_multiplier
         optimistic_stds = stds * mult
@@ -51,7 +49,7 @@ class DualTanhPolicy(nn.Module):
 
 class NormalTanhPolicy(nn.Module):
     action_dim: int
-    hidden_dims: int = 256
+    hidden_dims: int = 512
     depth: int = 1
     activations: Callable[[jnp.ndarray], jnp.ndarray] = nn.relu
     log_std_scale: float = 1.0
@@ -64,21 +62,18 @@ class NormalTanhPolicy(nn.Module):
     def __call__(
         self, observations: jnp.ndarray, task_ids: jnp.ndarray, temperature: float = 1.0, training: bool = False, return_params: bool = False
     ) -> tfd.Distribution:
+        inputs = jnp.concatenate([observations, task_ids], -1)
         if self.use_bronet:
-            outputs = BroNet(hidden_dims=self.hidden_dims, depth=self.depth, activations=self.activations, add_final_layer=False, output_nodes=None)(observations)
+            outputs = BroNet(hidden_dims=self.hidden_dims, depth=self.depth, activations=self.activations, add_final_layer=False, output_nodes=None)(inputs)
         else:
-            outputs = MLPClassic(hidden_dims=self.hidden_dims, depth=self.depth, activations=self.activations, add_final_layer=False, output_nodes=None)(observations)
-        means = nn.Dense(self.action_dim*self.num_envs, kernel_init=default_init())(outputs)
-        log_stds = nn.Dense(self.action_dim*self.num_envs, kernel_init=default_init(self.log_std_scale))(outputs)
+            outputs = MLPClassic(hidden_dims=self.hidden_dims, depth=self.depth, activations=self.activations, add_final_layer=False, output_nodes=None)(inputs)
+        means = nn.Dense(self.action_dim, kernel_init=default_init())(outputs)
+        log_stds = nn.Dense(self.action_dim, kernel_init=default_init(self.log_std_scale))(outputs)
         log_std_min = self.log_std_min or LOG_STD_MIN
         log_std_max = self.log_std_max or LOG_STD_MAX
         log_stds = log_std_min + (log_std_max - log_std_min) * 0.5 * (1 + nn.tanh(log_stds))
         stds = jnp.exp(log_stds)
         stds = stds * temperature
-        means = jnp.stack(jnp.split(means, self.num_envs, axis=-1))
-        stds = jnp.stack(jnp.split(stds, self.num_envs, axis=-1))
-        means = (means * task_ids).sum(0)
-        stds = (stds * task_ids).sum(0)
         base_dist = tfd.MultivariateNormalDiag(loc=means, scale_diag=stds)
         if return_params is False:
             return tfd.TransformedDistribution(distribution=base_dist, bijector=tfb.Tanh())
