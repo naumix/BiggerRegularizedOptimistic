@@ -44,7 +44,7 @@ class flags:
     batch_size=int(128)
     updates_per_step=int(8)
     algo='BRO'
-    task_type=int(10)
+    task_type=int(50)
     
 FLAGS = flags()
 
@@ -82,7 +82,7 @@ def main(_):
             env.action_space.sample()[0, np.newaxis],
             task_type=FLAGS.task_type,
             num_seeds=1,
-            **kwargs,
+            #**kwargs,
         )
     else:
         updates_per_step = 1
@@ -92,14 +92,15 @@ def main(_):
             FLAGS.seed,
             env.observation_space.sample()[0, np.newaxis],
             env.action_space.sample()[0, np.newaxis],
+            task_type=FLAGS.task_type,
             num_seeds=1,
-            **kwargs,
+            #**kwargs,
         )
         
     replay_buffer = ParallelReplayBuffer(env.observation_space, env.action_space.shape[-1], FLAGS.replay_buffer_size, num_seeds=FLAGS.task_type)
     observations = env.reset() 
     eval_returns = [[] for _ in range(FLAGS.task_type)]
-    for i in range(0, FLAGS.max_steps):
+    for i in range(1, FLAGS.max_steps+1):
         actions = env.action_space.sample() if i < FLAGS.start_training else agent.sample_actions_o(observations, task_ids, temperature=1.0)
         next_observations, rewards, terms, truns, _ = env.step(actions)
         masks = env.generate_masks(terms, truns)
@@ -107,7 +108,7 @@ def main(_):
         observations = next_observations
         observations, terms, truns, reward_mask = env.reset_where_done(observations, terms, truns)
         if i >= FLAGS.start_training:
-            batches = replay_buffer.sample_parallel_multibatch(2048, updates_per_step)
+            batches = replay_buffer.sample_parallel_multibatch(100*FLAGS.task_type, updates_per_step)
             infos = agent.update(batches, updates_per_step, i)
             log_to_wandb_if_time_to(i, infos, FLAGS.eval_interval)
         evaluate_if_time_to(i, agent, eval_env, FLAGS.eval_interval, FLAGS.eval_episodes, eval_returns, list(range(FLAGS.seed, FLAGS.seed+FLAGS.task_type)), save_dir)

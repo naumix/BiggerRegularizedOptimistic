@@ -172,9 +172,9 @@ class SAC(object):
         def _init_models(seed):
             rng = jax.random.PRNGKey(seed)
             rng, actor_key, critic_key, temp_key, pessimism_key, actor_o_key, optimism_key, regularizer_key = jax.random.split(rng, 8)
-            actor_def = policies.NormalTanhPolicy(action_dim, hidden_dims=256, depth=1, use_bronet=False)
-            actor_o_def = policies.DualTanhPolicy(action_dim, hidden_dims=256, depth=1, use_bronet=False)
-            critic_def = critic_net.DoubleCritic(output_nodes=output_nodes, hidden_dims=256, depth=1, use_bronet=False)
+            actor_def = policies.NormalTanhPolicy(action_dim, hidden_dims=512, depth=1, use_bronet=False)
+            actor_o_def = policies.DualTanhPolicy(action_dim, hidden_dims=512, depth=1, use_bronet=False)
+            critic_def = critic_net.DoubleCritic(output_nodes=output_nodes, hidden_dims=512, depth=1, use_bronet=False)
             
             actor = Model.create(actor_def, inputs=[actor_key, observations, jnp.eye(self.task_type)[0][None, :]], tx=optax.adamw(learning_rate=actor_lr))
             actor_o = Model.create(actor_o_def, inputs=[actor_o_key, observations, jnp.eye(self.task_type)[0][None, :], actions, actions, self.std_multiplier], tx=optax.adamw(learning_rate=actor_lr))
