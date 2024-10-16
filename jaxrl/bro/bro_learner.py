@@ -133,6 +133,7 @@ class BRO(object):
         seed: int,
         observations: jnp.ndarray,
         actions: jnp.ndarray,
+        task_type: int = 10,
         actor_lr: float = 3e-4,
         critic_lr: float = 3e-4,
         temp_lr: float = 3e-4,
@@ -153,6 +154,7 @@ class BRO(object):
     ) -> None:
         
         self.seed = seed
+        self.task_type = task_type
         self.distributional = distributional
         self.n_quantiles = n_quantiles
         self.std_multiplier = std_multiplier
@@ -179,10 +181,10 @@ class BRO(object):
             actor_o_def = policies.DualTanhPolicy(action_dim, use_bronet=True)
             critic_def = critic_net.DoubleCritic(output_nodes=output_nodes, use_bronet=True)
             
-            actor = Model.create(actor_def, inputs=[actor_key, observations, jnp.eye(10)[0][None, :]], tx=optax.adamw(learning_rate=actor_lr))
-            actor_o = Model.create(actor_o_def, inputs=[actor_o_key, observations, jnp.eye(10)[0][None, :], actions, actions, self.std_multiplier], tx=optax.adamw(learning_rate=actor_lr))
-            critic = Model.create(critic_def, inputs=[critic_key, observations, actions, jnp.eye(10)[0][None, :]], tx=optax.adamw(learning_rate=critic_lr))
-            target_critic = Model.create(critic_def, inputs=[critic_key, observations, actions, jnp.eye(10)[0][None, :]])
+            actor = Model.create(actor_def, inputs=[actor_key, observations, jnp.eye(self.task_type)[0][None, :]], tx=optax.adamw(learning_rate=actor_lr))
+            actor_o = Model.create(actor_o_def, inputs=[actor_o_key, observations, jnp.eye(self.task_type)[0][None, :], actions, actions, self.std_multiplier], tx=optax.adamw(learning_rate=actor_lr))
+            critic = Model.create(critic_def, inputs=[critic_key, observations, actions, jnp.eye(self.task_type)[0][None, :]], tx=optax.adamw(learning_rate=critic_lr))
+            target_critic = Model.create(critic_def, inputs=[critic_key, observations, actions, jnp.eye(self.task_type)[0][None, :]])
             
             temp = Model.create(temperature.Temperature(init_temperature), inputs=[temp_key], tx=optax.adam(learning_rate=temp_lr, b1=0.5))
             log_val_min, log_val_max = -10.0, 7.5

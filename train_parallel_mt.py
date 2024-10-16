@@ -44,6 +44,7 @@ class flags:
     batch_size=int(128)
     updates_per_step=int(8)
     algo='BRO'
+    task_type=int(10)
     
 FLAGS = flags()
 
@@ -59,8 +60,8 @@ def main(_):
         name=f'{FLAGS.algo}_{FLAGS.seed}'
     )
     os.makedirs(save_dir, exist_ok=True)
-    env = make_env_mt(FLAGS.seed)
-    eval_env = make_env_mt(FLAGS.seed)
+    env = make_env_mt(FLAGS.seed, FLAGS.task_type)
+    eval_env = make_env_mt(FLAGS.seed, FLAGS.task_type)
     np.random.seed(FLAGS.seed)
     random.seed(FLAGS.seed)
     mute_warning()
@@ -79,6 +80,7 @@ def main(_):
             FLAGS.seed,
             env.observation_space.sample()[0, np.newaxis],
             env.action_space.sample()[0, np.newaxis],
+            task_type=FLAGS.task_type,
             num_seeds=1,
             **kwargs,
         )
@@ -105,10 +107,10 @@ def main(_):
         observations = next_observations
         observations, terms, truns, reward_mask = env.reset_where_done(observations, terms, truns)
         if i >= FLAGS.start_training:
-            batches = replay_buffer.sample_parallel_multibatch(FLAGS.batch_size*FLAGS.task_type, updates_per_step)
+            batches = replay_buffer.sample_parallel_multibatch(2048, updates_per_step)
             infos = agent.update(batches, updates_per_step, i)
             log_to_wandb_if_time_to(i, infos, FLAGS.eval_interval)
         evaluate_if_time_to(i, agent, eval_env, FLAGS.eval_interval, FLAGS.eval_episodes, eval_returns, list(range(FLAGS.seed, FLAGS.seed+FLAGS.task_type)), save_dir)
-
+        #eval_env.evaluate(agent, 2)
 if __name__ == '__main__':
     app.run(main)

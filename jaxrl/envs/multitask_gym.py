@@ -5,18 +5,22 @@ from gymnasium import spaces
 import random
         
 class make_env_mt(gym.Env):
-    def __init__(self, seed, max_t=201):
+    def __init__(self, seed, task_type=10, max_t=201):
         #seed = 0
         np.random.seed(seed)
-        mt_env = metaworld.MT10(seed=seed)
+        if task_type==10:
+            mt_env = metaworld.MT10(seed=seed)
+        else:
+            mt_env = metaworld.MT50(seed=seed)
         self.max_t = max_t
-        self.timestep = np.zeros(10)
+        self.timestep = np.zeros(task_type)
         envs = []
         for name, env_cls in mt_env.train_classes.items():
             env = env_cls()
             task = random.choice([task for task in mt_env.train_tasks if task.env_name == name])
             env.set_task(task)
             envs.append(env)
+        self.task_type = task_type
         self.envs = envs 
         self.action_space = spaces.Box(low=self.envs[0].action_space.low[None].repeat(len(self.envs), axis=0),
                                        high=self.envs[0].action_space.high[None].repeat(len(self.envs), axis=0),
@@ -43,7 +47,7 @@ class make_env_mt(gym.Env):
     
     def reset(self):
         obs = []
-        self.timestep = np.zeros(10)
+        self.timestep = np.zeros(self.task_type)
         for env in self.envs:
             ob, _ = env.reset()
             obs.append(ob)
@@ -75,11 +79,11 @@ class make_env_mt(gym.Env):
             goals.append(info['success'])
         return np.stack(obs), np.stack(rews), np.stack(terms), np.stack(truns), np.stack(goals)
     
-    def evaluate(self, agent, num_episodes=5, temperature=0.0):
-        n_seeds = 10
+    def evaluate(self, agent, num_episodes=3, temperature=0.0):
+        n_seeds = self.task_type
         goals = []
         returns_eval = []
-        task_ids = np.eye(10)[:,:,None]
+        task_ids = np.eye(self.task_type)
         for _episode in range(num_episodes):
             observations = self.reset()
             returns = np.zeros(n_seeds)
