@@ -82,7 +82,7 @@ def main(_):
             env.action_space.sample()[0, np.newaxis],
             task_type=FLAGS.task_type,
             num_seeds=1,
-            #**kwargs,
+            **kwargs,
         )
     else:
         updates_per_step = 1
@@ -94,7 +94,7 @@ def main(_):
             env.action_space.sample()[0, np.newaxis],
             task_type=FLAGS.task_type,
             num_seeds=1,
-            #**kwargs,
+            **kwargs,
         )
         
     replay_buffer = ParallelReplayBuffer(env.observation_space, env.action_space.shape[-1], FLAGS.replay_buffer_size, num_seeds=FLAGS.task_type)
@@ -111,7 +111,7 @@ def main(_):
             batches = replay_buffer.sample_parallel_multibatch(128*FLAGS.task_type, updates_per_step)
             infos = agent.update(batches, updates_per_step, i)
             log_to_wandb_if_time_to(i, infos, FLAGS.eval_interval)
-        evaluate_if_time_to(i, agent, eval_env, FLAGS.eval_interval, FLAGS.eval_episodes, eval_returns, list(range(FLAGS.seed, FLAGS.seed+FLAGS.task_type)), save_dir)
+        evaluate_if_time_to(i, agent, eval_env, FLAGS.eval_interval, 2, eval_returns, list(range(FLAGS.seed, FLAGS.seed+FLAGS.task_type)), save_dir)
         #eval_env.evaluate(agent, 2)
 if __name__ == '__main__':
     app.run(main)
