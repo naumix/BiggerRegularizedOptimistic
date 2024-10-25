@@ -19,7 +19,7 @@ To install the dependencies for the DMC experiments, run 'pip install -r jaxreqs
 ## Other branches and related repos
 
 1. NewMujoco branch - we migrated BRO to new mujoco versions, as well as moved from gym to gymnasium
-2. BiggerRegularizedOptimistic Torch - we released a minimal implementation of BRO in torch (https://github.com/naumix/BiggerRegularizedOtimistic_Torch)
+2. BiggerRegularizedOptimistic Torch - we released a minimal implementation of BRO in torch (https://github.com/naumix/BiggerRegularizedOtimistic_Torch). We have not fully tested this repository yet
 
 ## Citation
 
