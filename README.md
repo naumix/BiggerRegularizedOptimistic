@@ -32,5 +32,6 @@ title={Bigger, Regularized, Optimistic: scaling for compute and sample-efficient
 author={Michal Nauman and Mateusz Ostaszewski and Krzysztof Jankowski and Piotr Miłoś and Marek Cygan},
 booktitle={Advances in Neural Information Processing Systems},
 year={2024},
+url={https://arxiv.org/pdf/2405.16158},
 }
 ```
