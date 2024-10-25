@@ -22,3 +22,15 @@ To install the dependencies for the DMC experiments, run 'pip install -r jaxreqs
 2. BiggerRegularizedOptimistic Torch - we released a minimal implementation of BRO in torch
 
 ## Citation
+
+If you find this repository useful, feel free to cite our paper using the following bibtex.
+
+```
+@inproceedings{
+nauman2024bigger,
+title={Bigger, Regularized, Optimistic: scaling for compute and sample-efficient continuous control},
+author={Michal Nauman and Mateusz Ostaszewski and Krzysztof Jankowski and Piotr Miłoś and Marek Cygan},
+booktitle={Advances in Neural Information Processing Systems},
+year={2024},
+}
+```
