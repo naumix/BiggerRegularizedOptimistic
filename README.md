@@ -23,12 +23,13 @@ BRO (fast); simply reduce the replay ratio to 2:
 
 ## Installation
 
-To install the dependencies for the DMC experiments, run ``pip install -r requirements_dmc.txt``. Due to incompatibilities, MetaWorld and MyoSuite has to be installed in separate virtual envs ``pip install -r TODODDOODOD``. 
+To install the dependencies for the DMC experiments, run ``pip install -r requirements_dmc.txt``. Since MyoSuite requires an older version of Gym, we recommend installing it in a separate environment than DMC. 
 
 ## Other branches and related repos
 
-1. [A torch version](https://github.com/naumix/BiggerRegularizedOtimistic_Torch) -- a minimal implementation of BRO in torch.
-2. [An implementation in Stable Baselines](https://github.com/naumix/sbx-tinkering/tree/add-BRO)
+1. [A torch version](https://github.com/naumix/BiggerRegularizedOtimistic_Torch) -- an educational implementation of BRO in torch.
+2. [An implementation in Stable Baselines](https://github.com/naumix/sbx-tinkering/tree/add-BRO) -- version compliant with SBX.
+
 
 ### Citation
 
