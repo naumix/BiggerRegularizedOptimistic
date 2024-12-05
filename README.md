@@ -1,29 +1,37 @@
 # Bigger, Regularized, Optimistic: scaling for compute and sample-efficient continuous control
 
-https://arxiv.org/abs/2405.16158
 
-The repository contains the implementation of the BRO algorithm (NeurIPS 2024 spotlight) that can be used to reproduce our results. The codebase is heavily inspired by [JaxRL](https://github.com/ikostrikov/jaxrl) and [Parallel JaxRL](https://github.com/proceduralia/high_replay_ratio_continuous_control).
+- [BRO Paper](https://arxiv.org/abs/2405.16158); NeurIPS'24 **(spotlight)**
+- [Project website](https://sites.google.com/view/bro-agent/)
 
-## Example usage
+### Short info
+Sample efficiency in Reinforcement Learning (RL) has traditionally been driven by algorithmic enhancements. In this work, we demonstrate that scaling can also lead to substantial improvements. We conduct a thorough investigation into the interplay of scaling model capacity and domain-specific RL enhancements. These empirical findings inform the design choices underlying our proposed BRO (Bigger, Regularized, Optimistic) algorithm. The key innovation behind BRO is that strong regularization allows for effective scaling of the critic networks, which, paired with optimistic exploration, leads to superior performance. BRO achieves state-of-the-art results, significantly outperforming the leading model-based and model-free algorithms across 40 complex tasks from the DeepMind Control, MetaWorld, and MyoSuite benchmarks. BRO is the first model-free algorithm to achieve near-optimal policies in the notoriously challenging Dog and Humanoid tasks.
 
-To run the BRO algorithm:
-`python3 train_parallel.py --benchmark=dmc --env_name=dog-run --num_seeds=10 --updates_per_step=10`
+![bro_results.png](bro_results.png)
 
-To run the BRO (fast) version simply reduce the replay ratio to 2:
-`python3 train_parallel.py --benchmark=dmc --env_name=dog-run --num_seeds=10 --updates_per_step=2`
+Our implementation of the BRO algorithm. The codebase is heavily inspired by [JaxRL](https://github.com/ikostrikov/jaxrl) and [Parallel JaxRL](https://github.com/proceduralia/high_replay_ratio_continuous_control).
+
+## Examples
+
+BRO with default settings:
+
+``python3 train_parallel.py --benchmark=dmc --env_name=dog-run``
+
+BRO (fast); simply reduce the replay ratio to 2:
+
+``python3 train_parallel.py --benchmark=dmc --env_name=dog-run --updates_per_step=2``
 
 ## Installation
 
-To install the dependencies for the DMC experiments, run 'pip install -r jaxreqs.txt'. Due to incompatibilities, MetaWorld and MyoSuite has to be installed in separate environments. 
+To install the dependencies for the DMC experiments, run ``pip install -r requirements_dmc.txt``. Since MyoSuite requires an older version of Gym, we recommend installing it in a separate environment than DMC. 
 
 ## Other branches and related repos
 
-1. NewMujoco branch - we migrated BRO to new mujoco versions, as well as moved from gym to gymnasium
-2. BiggerRegularizedOptimistic Torch - we plan to release a minimal implementation of BRO in torch (https://github.com/naumix/BiggerRegularizedOtimistic_Torch). **Work in progress**
+1. [A torch version](https://github.com/naumix/BiggerRegularizedOtimistic_Torch) -- an educational implementation of BRO in torch.
+2. [An implementation in Stable Baselines](https://github.com/naumix/sbx-tinkering/tree/add-BRO) -- version compliant with SBX.
 
-## Citation
 
-If you find this repository useful, feel free to cite our paper using the following bibtex.
+### Citation
 
 ```
 @inproceedings{
