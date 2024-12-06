@@ -4,22 +4,24 @@
 - [BRO Paper](https://arxiv.org/abs/2405.16158); NeurIPS'24 **(spotlight)**
 - [Project website](https://sites.google.com/view/bro-agent/)
 
-### Short info
-Sample efficiency in Reinforcement Learning (RL) has traditionally been driven by algorithmic enhancements. In this work, we demonstrate that scaling can also lead to substantial improvements. We conduct a thorough investigation into the interplay of scaling model capacity and domain-specific RL enhancements. These empirical findings inform the design choices underlying our proposed BRO (Bigger, Regularized, Optimistic) algorithm. The key innovation behind BRO is that strong regularization allows for effective scaling of the critic networks, which, paired with optimistic exploration, leads to superior performance. BRO achieves state-of-the-art results, significantly outperforming the leading model-based and model-free algorithms across 40 complex tasks from the DeepMind Control, MetaWorld, and MyoSuite benchmarks. BRO is the first model-free algorithm to achieve near-optimal policies in the notoriously challenging Dog and Humanoid tasks.
+### BRO - Short info
+Sample efficiency in Reinforcement Learning (RL) has traditionally been driven by algorithmic enhancements. In this work, we demonstrate that scaling can also lead to substantial improvements. We conduct a thorough investigation into the interplay of scaling model capacity and domain-specific RL enhancements. These empirical findings inform the design choices underlying our proposed **BRO (Bigger, Regularized, Optimistic)** algorithm. The key innovation behind BRO is that strong regularization allows for effective scaling of the critic networks, which, paired with optimistic exploration, leads to superior performance. BRO achieves state-of-the-art results, significantly outperforming the leading model-based and model-free algorithms across 40 complex tasks from the DeepMind Control, MetaWorld, and MyoSuite benchmarks. BRO is the first model-free algorithm to achieve near-optimal policies in the notoriously challenging Dog and Humanoid tasks.
 
 ![bro_results.png](bro_results.png)
 
 Our implementation of the BRO algorithm. The codebase is heavily inspired by [JaxRL](https://github.com/ikostrikov/jaxrl) and [Parallel JaxRL](https://github.com/proceduralia/high_replay_ratio_continuous_control).
 
 ## Examples
+``updates_per_step``  is the most important parameter, determines how many updates are performed per environment step. It controls a trade-off between sample efficiency and computational cost. We propose ``updates_per_step=10`` as the default, as we found the higher values to bring marginal gains. 
 
-BRO with default settings:
+BRO with default settings (``updates_per_step=10``):
 
 ``python3 train_parallel.py --benchmark=dmc --env_name=dog-run``
 
-BRO (fast); simply reduce the replay ratio to 2:
+BRO (fast); in many cases, setting lower value `updates_per_step=2` bring already excellent performance, while being much faster.  
 
-``python3 train_parallel.py --benchmark=dmc --env_name=dog-run --updates_per_step=2``
+``python3 train_parallel.py --benchmark=dmc --env_name=dog-run --updates_per_step=2`` 
+
 
 ## Installation
 
