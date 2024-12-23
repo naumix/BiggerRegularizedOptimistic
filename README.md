@@ -27,6 +27,13 @@ BRO (fast); in many cases, setting lower value `updates_per_step=2` bring alread
 
 To install the dependencies for the DMC experiments, run ``pip install -r requirements_dmc.txt``. Since MyoSuite requires an older version of Gym, we recommend installing it in a separate environment than DMC. 
 
+If your systems throws an error while installing Gym, then before installing requirements_dmc.txt run the following lines:
+
+
+''pip install setuptools==65''
+''pip install wheel==0.38.4''
+''pip install pip==24.0''
+
 ## Other branches and related repos
 
 1. [A torch version](https://github.com/naumix/BiggerRegularizedOtimistic_Torch) -- an educational implementation of BRO in torch.
