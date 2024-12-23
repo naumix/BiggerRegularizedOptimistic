@@ -30,9 +30,9 @@ To install the dependencies for the DMC experiments, run ``pip install -r requir
 If your systems throws an error while installing Gym, then before installing requirements_dmc.txt run the following lines:
 
 
-''pip install setuptools==65''
-''pip install wheel==0.38.4''
-''pip install pip==24.0''
+``pip install setuptools==65``
+``pip install wheel==0.38.4``
+``pip install pip==24.0``
 
 ## Other branches and related repos
 
